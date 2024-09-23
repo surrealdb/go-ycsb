@@ -31,6 +31,10 @@ endif
 
 default: build
 
+quick: export GO111MODULE=on
+quick:
+	go build -o bin/go-ycsb cmd/go-ycsb/*
+
 build: export GO111MODULE=on
 build:
 ifeq ($(TAGS),)
