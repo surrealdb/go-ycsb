@@ -11,15 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package spanner
+package surrealdb
 
 import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
-	surrealdb "github.com/surrealdb/surrealdb.go"
+	"github.com/surrealdb/surrealdb.go"
+	"github.com/surrealdb/surrealdb.go/pkg/marshal"
+	"github.com/surrealdb/surrealdb.go/pkg/models"
 
 	"github.com/magiconair/properties"
 	"github.com/pingcap/go-ycsb/pkg/ycsb"
@@ -34,17 +35,16 @@ const (
 	surrealdbDb   = "surrealdb.db"
 )
 
-type sdbCreator struct {
-}
+type sdbCreator struct{}
 
 func (c sdbCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	return createDB(p)
 }
 
 func createDB(p *properties.Properties) (ycsb.DB, error) {
-	dbUri := p.GetString(surrealdbUri, "ws://localhost:8000/rpc")
-	dbUser := p.GetString(surrealdbUser, "")
-	dbPass := p.GetString(surrealdbPass, "")
+	dbUri := p.GetString(surrealdbUri, "ws://127.0.0.1:8000")
+	dbUser := p.GetString(surrealdbUser, "root")
+	dbPass := p.GetString(surrealdbPass, "root")
 	useNs := p.GetString(surrealdbNs, "ycsb")
 	useDb := p.GetString(surrealdbDb, "ycsb")
 
@@ -59,16 +59,16 @@ func createDB(p *properties.Properties) (ycsb.DB, error) {
 
 func (s *surrealDB) connect() (*surrealdb.DB, error) {
 	// Create client connection
-	db, err := surrealdb.New(s.dbUri, surrealdb.WithTimeout(30*time.Second))
+	db, err := surrealdb.New(s.dbUri)
 	if err != nil {
 		return nil, err
 	}
 
 	// Signin
 	if s.dbUser != "" {
-		if _, err = db.Signin(map[string]string{
-			"user": s.dbUser,
-			"pass": s.dbPass,
+		if _, err = db.Signin(&models.Auth{
+			Username: s.dbUser,
+			Password: s.dbPass,
 		}); err != nil {
 			return nil, err
 		}
@@ -119,13 +119,22 @@ func (s *surrealDB) Read(ctx context.Context, table string, key string, fields [
 		query = fmt.Sprintf(`SELECT %s FROM %s:%s`, strings.Join(fields, ","), table, key)
 	}
 
-	res, err := surrealdb.SmartUnmarshal[[]map[string][]byte](db.Query(query, nil))
+	res, err := db.Query(query, nil)
 	if err != nil {
 		log.S().Errorf("Read error: %s", err.Error())
 		return nil, fmt.Errorf("Read error: %s", err.Error())
 	}
 
-	return res[0], nil
+	fmt.Println(res)
+
+	var result []marshal.RawQuery[any]
+	err = marshal.UnmarshalRaw(res, &result)
+	if err != nil {
+		log.S().Errorf("Read error: %s", err.Error())
+		return nil, fmt.Errorf("Read error: %s", err.Error())
+	}
+
+	return result[0].Result[0].(map[string][]byte), nil
 }
 
 // Scan documents.
@@ -138,48 +147,61 @@ func (s *surrealDB) Scan(ctx context.Context, table string, startKey string, cou
 		query = fmt.Sprintf(`SELECT %s FROM %s:%s.. LIMIT %d`, strings.Join(fields, ","), table, startKey, count)
 	}
 
-	res, err := surrealdb.SmartUnmarshal[[]map[string][]byte](db.Query(query, nil))
+	res, err := db.Query(query, nil)
 	if err != nil {
-		log.S().Errorf("Scan error: %s", err.Error())
-		return nil, fmt.Errorf("Scan error: %s", err.Error())
+		log.S().Errorf("Read error: %s", err.Error())
+		return nil, fmt.Errorf("Read error: %s", err.Error())
 	}
 
-	return res, nil
+	var result []marshal.RawQuery[map[string][]byte]
+	err = marshal.UnmarshalRaw(res, &result)
+	if err != nil {
+		log.S().Errorf("Read error: %s", err.Error())
+		return nil, fmt.Errorf("Read error: %s", err.Error())
+	}
+
+	return result[0].Result, nil
 }
 
 // Insert a document.
 func (s *surrealDB) Insert(ctx context.Context, table string, key string, values map[string][]byte) error {
 	db := ctx.Value(SurrealDBConnection{}).(*surrealdb.DB)
-	_, err := db.Create(fmt.Sprintf(`%s:%s`, table, key), values)
+	_, err := db.Upsert(models.RecordID{
+		Table: table,
+		ID:    key,
+	}, values)
 	if err != nil {
 		log.S().Errorf("Insert error: %s", err.Error())
 		return fmt.Errorf("Insert error: %s", err.Error())
 	}
-
 	return nil
 }
 
 // Update a document.
 func (s *surrealDB) Update(ctx context.Context, table string, key string, values map[string][]byte) error {
 	db := ctx.Value(SurrealDBConnection{}).(*surrealdb.DB)
-	_, err := db.Update(fmt.Sprintf(`%s:%s`, table, key), values)
+	_, err := db.Update(models.RecordID{
+		Table: table,
+		ID:    key,
+	}, values)
 	if err != nil {
 		log.S().Errorf("Update error: %s", err.Error())
 		return fmt.Errorf("Update error: %s", err.Error())
 	}
-
 	return nil
 }
 
 // Delete a document.
 func (s *surrealDB) Delete(ctx context.Context, table string, key string) error {
 	db := ctx.Value(SurrealDBConnection{}).(*surrealdb.DB)
-	_, err := db.Delete(fmt.Sprintf(`%s:%s`, table, key))
+	_, err := db.Delete(models.RecordID{
+		Table: table,
+		ID:    key,
+	})
 	if err != nil {
 		log.S().Errorf("Delete error: %s", err.Error())
 		return fmt.Errorf("Delete error: %s", err.Error())
 	}
-
 	return nil
 }
 
