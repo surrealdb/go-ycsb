@@ -268,6 +268,16 @@ Common configurations:
 |mongodb.username|N/A|Username for authentication|
 |mongodb.password|N/A|Password for authentication|
 
+### SurrealDB
+
+|field|default value|description|
+|-|-|-|
+|surrealdb.url|"ws://127.0.0.1:8000"|SurrealDB URI|
+|surrealdb.ns|"ycsb"|Namespace to use|
+|surrealdb.db|"ycsb"|Database to use|
+|surrealdb.user|"root"|Username for authentication|
+|surrealdb.pass|"root"|Password for authentication|
+
 ### Redis
 |field|default value|description|
 |-|-|-|
