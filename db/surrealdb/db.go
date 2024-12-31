@@ -38,14 +38,29 @@ const (
 type surrealdbCreator struct{}
 
 func (c surrealdbCreator) Create(p *properties.Properties) (ycsb.DB, error) {
-	return &surrealDB{
+	s := &surrealDB{
 		dbPath: p.GetString(surrealdbUri, "ws://127.0.0.1:8000"),
 		dbUser: p.GetString(surrealdbUser, "root"),
 		dbPass: p.GetString(surrealdbPass, "root"),
 		useNs:  p.GetString(surrealdbNs, "ycsb"),
 		useDb:  p.GetString(surrealdbDb, "ycsb"),
 		table:  p.GetString(prop.TableName, prop.TableNameDefault),
-	}, nil
+	}
+
+	if p.GetBool(prop.DropData, prop.DropDataDefault) {
+		db, err := s.connect()
+		if db != nil {
+			defer db.Close()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("unable to connect to SurrealDB: %w", err)
+		}
+		if _, err = surrealdb.Query[any](db, fmt.Sprintf(`REMOVE TABLE IF EXISTS %s`, s.table), nil); err != nil {
+			return nil, fmt.Errorf("unable to remove table %s: %w", s.table, err)
+		}
+	}
+
+	return s, nil
 }
 
 func (s *surrealDB) connect() (*surrealdb.DB, error) {
