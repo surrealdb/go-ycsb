@@ -7,10 +7,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/pingcap/go-ycsb/pkg/prop"
 	"io/ioutil"
 	"log"
 	"strings"
+
+	"github.com/pingcap/go-ycsb/pkg/prop"
 
 	"github.com/magiconair/properties"
 	"github.com/pingcap/go-ycsb/pkg/ycsb"
@@ -195,6 +196,14 @@ func (c mongodbCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 		cli: cli,
 		db:  cli.Database(mongodbDatabaseDefault),
 	}
+
+	if p.GetBool(prop.DropData, prop.DropDataDefault) {
+		tableName := p.GetString(prop.TableName, prop.TableNameDefault)
+		if err := m.db.Collection(tableName).Drop(ctx); err != nil {
+			return nil, fmt.Errorf("unable to drop %s: %w", tableName, err)
+		}
+	}
+
 	return m, nil
 }
 
