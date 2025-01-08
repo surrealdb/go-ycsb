@@ -35,7 +35,9 @@ const (
 	AVG       = "AVG"
 	MIN       = "MIN"
 	MAX       = "MAX"
+	PER25TH   = "PER25TH"
 	PER50TH   = "PER50TH"
+	PER75TH   = "PER75TH"
 	PER90TH   = "PER90TH"
 	PER95TH   = "PER95TH"
 	PER99TH   = "PER99TH"
@@ -82,7 +84,9 @@ func (h *histogram) getInfo() map[string]interface{} {
 	bounds := h.boundCounts.Keys()
 	sort.Ints(bounds)
 
+	per25 := h.hist.ValueAtPercentile(25)
 	per50 := h.hist.ValueAtPercentile(50)
+	per75 := h.hist.ValueAtPercentile(75)
 	per90 := h.hist.ValueAtPercentile(90)
 	per95 := h.hist.ValueAtPercentile(95)
 	per99 := h.hist.ValueAtPercentile(99)
@@ -98,7 +102,9 @@ func (h *histogram) getInfo() map[string]interface{} {
 	res[AVG] = avg
 	res[MIN] = min
 	res[MAX] = max
+	res[PER25TH] = per25
 	res[PER50TH] = per50
+	res[PER75TH] = per75
 	res[PER90TH] = per90
 	res[PER95TH] = per95
 	res[PER99TH] = per99
