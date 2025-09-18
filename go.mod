@@ -1,5 +1,7 @@
 module github.com/pingcap/go-ycsb
 
+go 1.25.1
+
 require (
 	cloud.google.com/go/spanner v1.45.0
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2
@@ -44,7 +46,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.4.26
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.17.1
 	github.com/pingcap/log v0.0.0-20211215031037-e024ba4eb0ee
-	github.com/surrealdb/surrealdb.go v0.3.2
+	github.com/surrealdb/surrealdb.go v0.11.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.2
 	go.etcd.io/etcd/client/v3 v3.5.2
 )
@@ -56,7 +58,7 @@ require (
 	cloud.google.com/go/iam v0.13.0 // indirect
 	cloud.google.com/go/longrunning v0.4.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7 // indirect
-	github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d // indirect
+	github.com/apache/thrift v0.16.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.21 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.23 // indirect
@@ -90,7 +92,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -101,7 +103,7 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -131,12 +133,14 @@ require (
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.20.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
@@ -147,5 +151,3 @@ require (
 )
 
 replace github.com/apache/thrift => github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
-
-go 1.18

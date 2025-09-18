@@ -47,15 +47,17 @@ func (c surrealdbCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 		table:  p.GetString(prop.TableName, prop.TableNameDefault),
 	}
 
+	ctx := context.Background()
+
 	if p.GetBool(prop.DropData, prop.DropDataDefault) {
-		db, err := s.connect()
+		db, err := s.connect(ctx)
 		if db != nil {
-			defer db.Close()
+			defer db.Close(ctx)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("unable to connect to SurrealDB: %w", err)
 		}
-		if _, err = surrealdb.Query[any](db, fmt.Sprintf(`REMOVE TABLE IF EXISTS %s`, s.table), nil); err != nil {
+		if _, err = surrealdb.Query[any](ctx, db, fmt.Sprintf(`REMOVE TABLE IF EXISTS %s`, s.table), nil); err != nil {
 			return nil, fmt.Errorf("unable to remove table %s: %w", s.table, err)
 		}
 	}
@@ -63,27 +65,30 @@ func (c surrealdbCreator) Create(p *properties.Properties) (ycsb.DB, error) {
 	return s, nil
 }
 
-func (s *surrealDB) connect() (*surrealdb.DB, error) {
+func (s *surrealDB) connect(ctx context.Context) (*surrealdb.DB, error) {
 	// Create a new connection
-	db, err := surrealdb.New(s.dbPath)
+	db, err := surrealdb.FromEndpointURLString(ctx, s.dbPath)
 	if err != nil {
 		return nil, err
 	}
 	// Authenticate to the inistance
 	if s.dbUser != "" {
-		if _, err = db.SignIn(&surrealdb.Auth{
-			Username: s.dbUser,
-			Password: s.dbPass,
-		}); err != nil {
+		if _, err = db.SignIn(
+			ctx,
+			&surrealdb.Auth{
+				Username: s.dbUser,
+				Password: s.dbPass,
+			},
+		); err != nil {
 			return nil, err
 		}
 	}
 	// Select a namespace and database
-	if err = db.Use(s.useNs, s.useDb); err != nil {
+	if err = db.Use(ctx, s.useNs, s.useDb); err != nil {
 		return nil, err
 	}
 	// Ensure the namespace, database, and table exist
-	if _, err = surrealdb.Query[any](db, fmt.Sprintf(`DEFINE TABLE IF NOT EXISTS %s`, s.table), nil); err != nil {
+	if _, err = surrealdb.Query[any](ctx, db, fmt.Sprintf(`DEFINE TABLE IF NOT EXISTS %s`, s.table), nil); err != nil {
 		return nil, err
 	}
 	// Return the database connection
@@ -107,7 +112,7 @@ func (s *surrealDB) Close() error {
 
 func (s *surrealDB) InitThread(ctx context.Context, threadID int, threadCount int) context.Context {
 	// Attempt to connect to SurrealDB
-	db, err := s.connect()
+	db, err := s.connect(ctx)
 	if err != nil {
 		log.S().Panicf("Error connecting to SurrealDB endpoint: %w", err)
 	}
@@ -116,13 +121,13 @@ func (s *surrealDB) InitThread(ctx context.Context, threadID int, threadCount in
 }
 
 func (s *surrealDB) CleanupThread(ctx context.Context) {
-	ctx.Value(surrealDBConnection{}).(*surrealdb.DB).Close()
+	ctx.Value(surrealDBConnection{}).(*surrealdb.DB).Close(ctx)
 }
 
 func (s *surrealDB) Read(ctx context.Context, table string, key string, fields []string) (map[string][]byte, error) {
 	db := ctx.Value(surrealDBConnection{}).(*surrealdb.DB)
 	if len(fields) == 0 {
-		res, err := surrealdb.Select[map[string][]byte](db, models.RecordID{
+		res, err := surrealdb.Select[map[string][]byte](ctx, db, models.RecordID{
 			Table: table,
 			ID:    key,
 		})
@@ -133,7 +138,7 @@ func (s *surrealDB) Read(ctx context.Context, table string, key string, fields [
 		return *res, nil
 	} else {
 		query := fmt.Sprintf(`SELECT %s FROM %s:%s`, strings.Join(fields, ","), table, key)
-		res, err := surrealdb.Query[[]map[string][]byte](db, query, nil)
+		res, err := surrealdb.Query[[]map[string][]byte](ctx, db, query, nil)
 		if err != nil {
 			log.S().Errorf("Read error: %s", err.Error())
 			return nil, fmt.Errorf("Read error: %s", err.Error())
@@ -150,7 +155,7 @@ func (s *surrealDB) Scan(ctx context.Context, table string, startKey string, cou
 	} else {
 		query = fmt.Sprintf(`SELECT %s FROM %s:%s.. LIMIT %d`, strings.Join(fields, ","), table, startKey, count)
 	}
-	res, err := surrealdb.Query[[]map[string][]byte](db, query, nil)
+	res, err := surrealdb.Query[[]map[string][]byte](ctx, db, query, nil)
 	if err != nil {
 		log.S().Errorf("Read error: %s", err.Error())
 		return nil, fmt.Errorf("Read error: %s", err.Error())
@@ -160,7 +165,7 @@ func (s *surrealDB) Scan(ctx context.Context, table string, startKey string, cou
 
 func (s *surrealDB) Insert(ctx context.Context, table string, key string, values map[string][]byte) error {
 	db := ctx.Value(surrealDBConnection{}).(*surrealdb.DB)
-	_, err := surrealdb.Upsert[any](db, models.RecordID{
+	_, err := surrealdb.Upsert[any](ctx, db, models.RecordID{
 		Table: table,
 		ID:    key,
 	}, values)
@@ -173,7 +178,7 @@ func (s *surrealDB) Insert(ctx context.Context, table string, key string, values
 
 func (s *surrealDB) Update(ctx context.Context, table string, key string, values map[string][]byte) error {
 	db := ctx.Value(surrealDBConnection{}).(*surrealdb.DB)
-	_, err := surrealdb.Update[any](db, models.RecordID{
+	_, err := surrealdb.Update[any](ctx, db, models.RecordID{
 		Table: table,
 		ID:    key,
 	}, values)
@@ -186,7 +191,7 @@ func (s *surrealDB) Update(ctx context.Context, table string, key string, values
 
 func (s *surrealDB) Delete(ctx context.Context, table string, key string) error {
 	db := ctx.Value(surrealDBConnection{}).(*surrealdb.DB)
-	_, err := surrealdb.Delete[any](db, models.RecordID{
+	_, err := surrealdb.Delete[any](ctx, db, models.RecordID{
 		Table: table,
 		ID:    key,
 	})
